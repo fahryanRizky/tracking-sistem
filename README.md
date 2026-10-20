@@ -16,8 +16,15 @@ Tracking Sistem hadir sebagai solusi "meja pertemuan" digital. Sistem membanding
 - **Kolom diskusi:** Vendor, Admin, dan Owner dapat berkomunikasi pada klaim terkait.
 - **Sistem revisi (versioning):** Vendor dapat mengirim revisi atas klaim yang ditolak, sementara riwayat versi sebelumnya tetap tersedia.
 - **Notifikasi email otomatis:** pemberitahuan alur klaim dikirim melalui antrean (queue).
-- **Export PDF formal:** rincian klaim dapat diunduh sebagai laporan PDF.
+- **Export PDF formal:** rincian klaim dapat diunduh sebagai laporan PDF dengan catatan tanda tangan elektronik sesuai tahapan persetujuan.
 - **Pencarian dan filter:** membantu menemukan klaim berdasarkan informasi yang tersedia di aplikasi.
+
+### Alur Tanda Tangan pada PDF
+
+- Saat Vendor mengajukan klaim, PDF mencatat tanda tangan elektronik Vendor beserta nama dan waktu pengajuan.
+- Setelah Admin menyelesaikan verifikasi lapangan, PDF menampilkan tanda tangan elektronik Admin beserta nama akun dan waktu verifikasi.
+- Setelah Owner menyetujui klaim, PDF menampilkan tanda tangan Vendor, Admin, dan Owner beserta waktu aktivitas masing-masing.
+- Tanda tangan ini adalah catatan persetujuan yang diambil dari riwayat aktivitas aplikasi, bukan tanda tangan tulisan tangan atau tanda tangan digital bersertifikat.
 
 ## 🛠️ Teknologi yang Digunakan
 
@@ -117,7 +124,7 @@ Gunakan akun ini hanya untuk pengembangan dan demo lokal. Ganti atau nonaktifkan
 
 ## 📸 Screen Shoot
 
-Letakkan file gambar dengan nama yang tercantum di bawah ke folder `public/screenshots/`. Folder ini telah disertakan di repository dengan file `.gitkeep` sebagai placeholder. Setelah gambar ditambahkan, gambar akan ditampilkan di bagian ini:
+Screenshot yang tersedia berada di folder `public/screenshots/`.
 
 ### 1. Halaman Login
 
@@ -127,18 +134,45 @@ Letakkan file gambar dengan nama yang tercantum di bawah ke folder `public/scree
 
 ![Dashboard Admin](public/screenshots/image-admin.png)
 
-### 3. Dashboard Owner
+### 3. Daftar Klaim Admin
+
+![Daftar Klaim Admin](public/screenshots/image-claim-admin.png)
+
+### 4. Tinjau Klaim oleh Admin
+
+![Tinjau Klaim oleh Admin](public/screenshots/image-admin-tinjau.png)
+
+### 5. Detail Tinjau Admin
+
+![Detail Tinjau Admin](public/screenshots/image-detail-tinjau-admin.png)
+
+### 6. Dashboard Vendor
+
+![Dashboard Vendor](public/screenshots/image-vendor.png)
+
+### 7. Pengajuan Klaim Vendor
+
+![Pengajuan Klaim Vendor](public/screenshots/image-pengajuan-vendor.png)
+
+### 8. Detail Pengajuan Vendor
+
+![Detail Pengajuan Vendor](public/screenshots/image-detail-pengajuan-vendor.png)
+
+### 9. Dashboard Owner
 
 ![Dashboard Owner](public/screenshots/image-owner.png)
 
-### 4. Halaman Vendor
+### 10. Pantau Klaim oleh Owner
 
-![Halaman Vendor](public/screenshots/image-vendor.png)
+![Pantau Klaim oleh Owner](public/screenshots/image-pantau-owner.png)
 
-### 5. Kolom Diskusi
+### 11. Detail Pantau Owner
 
-![Kolom Diskusi](public/screenshots/image-chat.png)
+![Detail Pantau Owner](public/screenshots/image-detail-pantau-owner.png)
 
-### 6. Hasil Export PDF
+### 12. Log Aktivitas
 
-![Hasil Export PDF](public/screenshots/image-pdf.png)
+![Log Aktivitas](public/screenshots/image-log-activity.png)
+
+### 13. Export PDF
+![Log Aktivitas](public/screenshots/image-pdf.png)

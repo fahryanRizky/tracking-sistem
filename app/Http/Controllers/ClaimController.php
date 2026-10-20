@@ -145,9 +145,27 @@ class ClaimController extends Controller
     public function exportPdf(Request $request, Claim $claim)
     {
         $this->authorizeClaimView($request, $claim);
-        $claim->load(['project', 'vendor', 'items', 'revisions']);
+        $claim->load(['project', 'vendor', 'items', 'revisions', 'activityLogs.user']);
 
-        return Pdf::loadView('claims.pdf', compact('claim'))
+        $latestActivity = fn (array $actions, string $role) => $claim->activityLogs->first(
+            fn (ActivityLog $activity): bool => in_array($activity->action, $actions, true)
+                && $activity->user?->role === $role
+        );
+        $vendorSignature = $latestActivity(['submitted', 'revised'], 'vendor') ?? (object) [
+            'user' => $claim->vendor,
+            'created_at' => $claim->created_at,
+        ];
+        $signatures = [
+            'vendor' => $vendorSignature,
+            'admin' => in_array($claim->status, ['reviewed', 'approved', 'rejected'], true)
+                ? $latestActivity(['reviewed'], 'admin')
+                : null,
+            'owner' => $claim->status === 'approved'
+                ? $latestActivity(['approved'], 'owner')
+                : null,
+        ];
+
+        return Pdf::loadView('claims.pdf', compact('claim', 'signatures'))
             ->setPaper('a4', 'portrait')
             ->download($claim->claim_number.'.pdf');
     }

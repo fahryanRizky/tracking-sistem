@@ -13,6 +13,8 @@ use App\Models\ClaimComment;
 use App\Models\ClaimRevision;
 use App\Models\Project;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\PDF as DomPdfDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -207,6 +209,66 @@ class ClaimWorkflowTest extends TestCase
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf')
             ->assertHeader('content-disposition', 'attachment; filename=CLM-PDF-1.pdf');
+    }
+
+    public function test_claim_pdf_signatures_follow_the_current_workflow_stage(): void
+    {
+        $vendor = $this->makeUser('vendor', 'active');
+        $admin = $this->makeUser('admin', 'active');
+        $owner = $this->makeUser('owner', 'active');
+        $claim = $this->makeClaim(
+            $vendor,
+            Project::create(['name' => 'Proyek Tanda Tangan']),
+            'submitted',
+            'CLM-PDF-SIGN'
+        );
+        $renderedViews = [];
+        $pdf = \Mockery::mock(DomPdfDocument::class);
+        $pdf->shouldReceive('setPaper')->times(3)->with('a4', 'portrait')->andReturnSelf();
+        $pdf->shouldReceive('download')->times(3)->with('CLM-PDF-SIGN.pdf')->andReturn(response('PDF'));
+
+        Pdf::shouldReceive('loadView')
+            ->times(3)
+            ->with('claims.pdf', \Mockery::on(function (array $data) use (&$renderedViews): bool {
+                $renderedViews[] = view('claims.pdf', $data)->render();
+
+                return true;
+            }))
+            ->andReturn($pdf);
+
+        $this->actingAs($vendor);
+
+        $this->get(route('claims.pdf', $claim))->assertOk();
+
+        $claim->update(['status' => 'reviewed']);
+        ActivityLog::create([
+            'claim_id' => $claim->id,
+            'user_id' => $admin->id,
+            'action' => 'reviewed',
+            'notes' => 'Admin menyelesaikan verifikasi.',
+        ]);
+        $this->get(route('claims.pdf', $claim))->assertOk();
+
+        $claim->update(['status' => 'approved']);
+        ActivityLog::create([
+            'claim_id' => $claim->id,
+            'user_id' => $owner->id,
+            'action' => 'approved',
+            'notes' => 'Owner menyetujui klaim.',
+        ]);
+        $this->get(route('claims.pdf', $claim))->assertOk();
+
+        $this->assertStringContainsString('Diajukan secara elektronik', $renderedViews[0]);
+        $this->assertStringNotContainsString('Diverifikasi secara elektronik', $renderedViews[0]);
+        $this->assertStringNotContainsString('Disetujui secara elektronik', $renderedViews[0]);
+
+        $this->assertStringContainsString('Diajukan secara elektronik', $renderedViews[1]);
+        $this->assertStringContainsString('Diverifikasi secara elektronik', $renderedViews[1]);
+        $this->assertStringNotContainsString('Disetujui secara elektronik', $renderedViews[1]);
+
+        $this->assertStringContainsString('Diajukan secara elektronik', $renderedViews[2]);
+        $this->assertStringContainsString('Diverifikasi secara elektronik', $renderedViews[2]);
+        $this->assertStringContainsString('Disetujui secara elektronik', $renderedViews[2]);
     }
 
     public function test_vendor_can_create_a_shared_project_while_submitting_a_claim(): void

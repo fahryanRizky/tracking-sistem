@@ -21,8 +21,10 @@
         .totals td { padding: 5px; }
         .signature { margin-top: 46px; width: 100%; }
         .signature td { padding: 4px; text-align: center; vertical-align: top; width: 33.33%; }
-        .signature-space { height: 62px; }
-        .signature-line { border-top: 1px solid #374151; margin: 0 auto; padding-top: 5px; width: 80%; }
+        .signature-space { height: 52px; }
+        .signature-stamp { color: #166534; font-size: 9px; font-weight: bold; }
+        .signature-name { border-top: 1px solid #374151; margin: 4px auto 0; padding-top: 5px; width: 80%; }
+        .signature-time, .signature-pending { color: #4b5563; font-size: 8px; }
     </style>
 </head>
 <body>
@@ -86,12 +88,32 @@
             <td>Admin Verifikator</td>
             <td>Owner PT Jaya</td>
         </tr>
-        <tr><td class="signature-space"></td><td class="signature-space"></td><td class="signature-space"></td></tr>
         <tr>
-            <td><div class="signature-line">{{ $claim->vendor->company_name ?: $claim->vendor->username }}</div></td>
-            <td><div class="signature-line">Nama dan tanda tangan</div></td>
-            <td><div class="signature-line">Nama dan tanda tangan</div></td>
+            @foreach (['vendor', 'admin', 'owner'] as $role)
+                @php
+                    $signature = $signatures[$role] ?? null;
+                    $signerName = $role === 'vendor'
+                        ? ($claim->vendor->company_name ?: $claim->vendor->username)
+                        : ($signature?->user?->username ?? null);
+                    $signatureLabels = [
+                        'vendor' => 'Diajukan secara elektronik',
+                        'admin' => 'Diverifikasi secara elektronik',
+                        'owner' => 'Disetujui secara elektronik',
+                    ];
+                @endphp
+                <td>
+                    <div class="signature-space"></div>
+                    @if ($signature && $signerName)
+                        <div class="signature-stamp">{{ $signatureLabels[$role] }}</div>
+                        <div class="signature-name">{{ $signerName }}</div>
+                        <div class="signature-time">{{ $signature->created_at->format('d-m-Y H:i') }}</div>
+                    @else
+                        <div class="signature-pending">Belum disetujui</div>
+                    @endif
+                </td>
+            @endforeach
         </tr>
     </table>
+    <p class="muted">Tanda tangan elektronik ini merupakan catatan aktivitas pada sistem, bukan tanda tangan digital bersertifikat.</p>
 </body>
 </html>
