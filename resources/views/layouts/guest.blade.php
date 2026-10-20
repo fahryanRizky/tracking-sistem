@@ -7,8 +7,10 @@
     <title>@yield('title', 'Masuk') | {{ config('app.name', 'Tracking Sistem') }}</title>
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600,700&display=swap" rel="stylesheet">
-    {{-- @vite(['resources/css/app.css', 'resources/js/app.js']) --}}
-    <link rel="stylesheet" href="{{ asset('build/assets/app-BOIwLO6w.css') }}">
+    
+    <!-- Gunakan Tailwind CDN untuk memastikan tampilan selalu rapi -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
 </head>
 <body class="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
     <main class="mx-auto flex min-h-screen max-w-md flex-col justify-center px-5 py-10">
