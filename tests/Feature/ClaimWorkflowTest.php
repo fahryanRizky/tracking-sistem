@@ -13,6 +13,7 @@ use App\Models\ClaimComment;
 use App\Models\ClaimRevision;
 use App\Models\Project;
 use App\Models\User;
+use App\Notifications\ClaimReviewedNotification;
 use App\Notifications\ClaimSubmittedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdfDocument;
@@ -279,6 +280,46 @@ class ClaimWorkflowTest extends TestCase
             $vendor->notifications()->where('data->claim_id', $rejectedClaim->id)->firstOrFail()->data['type']
         );
         $this->assertSame(2, $vendor->unreadNotifications()->count());
+    }
+
+    public function test_notification_feed_returns_only_the_authenticated_users_latest_notifications(): void
+    {
+        $vendor = $this->makeUser('vendor', 'active');
+        $admin = $this->makeUser('admin', 'active');
+        $owner = $this->makeUser('owner', 'active');
+        $claim = $this->makeClaim(
+            $vendor,
+            Project::create(['name' => 'Proyek Feed Notifikasi']),
+            'submitted',
+            'CLM-FEED-1'
+        );
+        $admin->notify(new ClaimSubmittedNotification($claim));
+        $owner->notify(new ClaimReviewedNotification($claim));
+
+        $this->actingAs($admin)
+            ->getJson(route('notifications.feed'))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('notifications.0.message', 'Klaim CLM-FEED-1 menunggu verifikasi Admin.')
+            ->assertJsonPath('notifications.0.read', false)
+            ->assertJsonPath('notifications.0.read_url', route(
+                'notifications.read',
+                $admin->notifications()->firstOrFail()->id,
+                false
+            ));
+
+        $this->actingAs($vendor)
+            ->getJson(route('notifications.feed'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 0)
+            ->assertJsonCount(0, 'notifications');
+
+        $this->actingAs($owner)
+            ->getJson(route('notifications.feed'))
+            ->assertOk()
+            ->assertJsonPath('unread_count', 1)
+            ->assertJsonPath('notifications.0.message', 'Klaim CLM-FEED-1 telah ditinjau dan menunggu keputusan Owner.');
     }
 
     public function test_claim_pdf_can_be_downloaded_by_an_authorized_vendor(): void

@@ -70,17 +70,17 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-4.5-5.8V4a1.5 1.5 0 0 0-3 0v1.2A6 6 0 0 0 6 11v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 0 1-6 0m6 0H9"/>
                             </svg>
                             @php($unreadNotificationsCount = auth()->user()->unreadNotifications()->count())
-                            @if ($unreadNotificationsCount > 0)
-                                <span class="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-bold leading-5 text-white">{{ $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount }}</span>
-                            @endif
+                            <span id="notifications-badge" @if ($unreadNotificationsCount === 0) hidden @endif
+                                  class="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-bold leading-5 text-white">{{ $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount }}</span>
                         </button>
                         <div id="notifications-menu" x-cloak x-show="open" x-transition
                              class="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2.5rem)] border border-gray-200 bg-white shadow-lg sm:w-96">
                             <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
                                 <h2 class="text-sm font-semibold text-gray-900">Notifikasi</h2>
-                                <span class="text-xs text-gray-500">{{ $unreadNotificationsCount }} belum dibaca</span>
+                                <span id="notifications-unread-count" class="text-xs text-gray-500">{{ $unreadNotificationsCount }} belum dibaca</span>
                             </div>
-                            <div class="max-h-96 overflow-y-auto">
+                            <div id="notifications-feed" data-feed-url="{{ request()->getBaseUrl() }}{{ route('notifications.feed', [], false) }}"
+                                 class="max-h-96 overflow-y-auto" aria-live="polite">
                                 @forelse (auth()->user()->notifications()->latest()->limit(10)->get() as $notification)
                                     <form method="POST" action="{{ route('notifications.read', $notification->id) }}">
                                         @csrf
