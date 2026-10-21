@@ -142,15 +142,14 @@
             <div class="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3 lg:grid-cols-4">
                 @foreach ($claim->attachments as $attachment)
                     @php
-                        // URL relatif agar gambar memakai host dan port tempat aplikasi sedang dibuka.
-                        $attachmentUrl = '/storage/'.ltrim($attachment->file_path, '/');
+                        $attachmentUrl = url('storage/'.ltrim($attachment->file_path, '/'));
                     @endphp
                     <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer"
                        class="group block border border-gray-200 p-1 hover:border-gray-400">
                         <img src="{{ $attachmentUrl }}"
                              alt="Foto bukti klaim {{ $claim->claim_number }} nomor {{ $loop->iteration }}"
                              class="h-36 w-full object-cover sm:h-44">
-                        <span class="block px-2 py-2 text-xs text-gray-600">{{ $attachment->created_at->locale('id')->translatedFormat('d M Y, H:i') }}</span>
+                        <span class="block px-2 py-2 text-xs text-gray-600">{{ $attachment->created_at->timezone('Asia/Jakarta')->locale('id')->translatedFormat('d M Y, H:i') }}</span>
                     </a>
                 @endforeach
             </div>

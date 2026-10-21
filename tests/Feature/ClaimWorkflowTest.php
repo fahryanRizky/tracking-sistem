@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Notifications\ClaimSubmittedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdfDocument;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -461,8 +462,13 @@ class ClaimWorkflowTest extends TestCase
             ->assertSee('target="_blank"', false);
 
         $attachment = ClaimAttachment::where('claim_id', $claim->id)->firstOrFail();
+        $attachment->forceFill([
+            'created_at' => Carbon::parse('2026-10-20 17:44:00', 'UTC'),
+        ])->saveQuietly();
+
         $this->get(route('claims.show', $claim))
-            ->assertSee('/storage/'.$attachment->file_path, false);
+            ->assertSee(url('storage/'.$attachment->file_path), false)
+            ->assertSee('21 Okt 2026, 00:44');
     }
 
     public function test_review_rejects_non_images_and_images_over_five_megabytes(): void
