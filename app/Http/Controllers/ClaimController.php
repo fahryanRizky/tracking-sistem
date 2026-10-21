@@ -8,6 +8,7 @@ use App\Mail\ClaimReviewedMail;
 use App\Mail\ClaimSubmittedMail;
 use App\Models\ActivityLog;
 use App\Models\Claim;
+use App\Models\ClaimAttachment;
 use App\Models\ClaimRevision;
 use App\Models\Project;
 use App\Models\User;
@@ -28,6 +29,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class ClaimController extends Controller
@@ -151,6 +153,18 @@ class ClaimController extends Controller
         ]);
 
         return view('claims.show', compact('claim'));
+    }
+
+    public function showAttachment(Request $request, Claim $claim, ClaimAttachment $attachment): StreamedResponse
+    {
+        $this->authorizeClaimView($request, $claim);
+        abort_unless($claim->attachments()->whereKey($attachment->getKey())->exists(), 404);
+        abort_unless(Storage::disk('public')->exists($attachment->file_path), 404);
+
+        return Storage::disk('public')->response(
+            $attachment->file_path,
+            headers: ['Cache-Control' => 'private, no-store']
+        );
     }
 
     public function exportPdf(Request $request, Claim $claim)

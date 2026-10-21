@@ -31,6 +31,8 @@ Route::middleware('auth')->group(function (): void {
 
     Route::middleware('role:vendor,admin,owner')->group(function (): void {
         Route::get('/claims', [ClaimController::class, 'index'])->name('claims.index');
+        Route::get('/claims/{claim}/attachments/{attachment}', [ClaimController::class, 'showAttachment'])
+            ->name('claims.attachments.show');
         Route::get('/claims/{claim}', [ClaimController::class, 'show'])->name('claims.show');
         Route::get('/claims/{claim}/pdf', [ClaimController::class, 'exportPdf'])->name('claims.pdf');
         Route::post('/claims/{claim}/comments', [ClaimController::class, 'storeComment'])->name('claims.comments.store');

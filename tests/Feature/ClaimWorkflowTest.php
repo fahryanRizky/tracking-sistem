@@ -558,15 +558,28 @@ class ClaimWorkflowTest extends TestCase
             ->get(route('claims.show', $claim))
             ->assertOk()
             ->assertSee('Foto bukti lapangan')
+            ->assertSee(route('claims.attachments.show', [$claim, ClaimAttachment::where('claim_id', $claim->id)->firstOrFail()]), false)
             ->assertSee('target="_blank"', false);
 
         $attachment = ClaimAttachment::where('claim_id', $claim->id)->firstOrFail();
+        $this->get(route('claims.attachments.show', [$claim, $attachment]))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png')
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertStreamedContent(Storage::disk('public')->get($attachment->file_path));
+
+        $anotherVendor = $this->makeUser('vendor', 'active', 'vendor-lain');
+        $this->actingAs($anotherVendor)
+            ->get(route('claims.attachments.show', [$claim, $attachment]))
+            ->assertForbidden();
+
         $attachment->forceFill([
             'created_at' => Carbon::parse('2026-10-20 17:44:00', 'UTC'),
         ])->saveQuietly();
 
-        $this->get(route('claims.show', $claim))
-            ->assertSee(url('storage/'.$attachment->file_path), false)
+        $this->actingAs($vendor)
+            ->get(route('claims.show', $claim))
+            ->assertSee(route('claims.attachments.show', [$claim, $attachment]), false)
             ->assertSee('21 Okt 2026, 00:44');
     }
 

@@ -142,7 +142,7 @@
             <div class="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3 lg:grid-cols-4">
                 @foreach ($claim->attachments as $attachment)
                     @php
-                        $attachmentUrl = url('storage/'.ltrim($attachment->file_path, '/'));
+                        $attachmentUrl = route('claims.attachments.show', [$claim, $attachment]);
                     @endphp
                     <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener noreferrer"
                        class="group block border border-gray-200 p-1 hover:border-gray-400">
