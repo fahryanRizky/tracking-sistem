@@ -32,6 +32,8 @@ use Throwable;
 
 class ClaimController extends Controller
 {
+    private const MAX_CLAIM_TOTAL = 9_999_999_999_999;
+
     public function index(Request $request): View
     {
         // Filter diambil hanya dari query string agar bisa dibagikan melalui URL.
@@ -82,9 +84,15 @@ class ClaimController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_name' => ['required', 'string', 'max:255'],
             'items.*.unit' => ['required', 'string', 'max:50'],
-            'items.*.claimed_quantity' => ['required', 'numeric', 'min:0'],
-            'items.*.claimed_unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.claimed_quantity' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
+            'items.*.claimed_unit_price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999999'],
         ]);
+        $totalClaimAmount = $this->validatedTotalAmount(
+            $data['items'],
+            'claimed_quantity',
+            'claimed_unit_price'
+        );
+
         // Pilih hanya kolom yang boleh ditentukan vendor, terutama tanpa nilai realisasi.
         $items = collect($data['items'])->map(fn (array $item): array => [
             'item_name' => $item['item_name'],
@@ -93,7 +101,7 @@ class ClaimController extends Controller
             'claimed_unit_price' => $item['claimed_unit_price'],
         ])->all();
 
-        $claim = DB::transaction(function () use ($data, $items, $creatingProject, $request): Claim {
+        $claim = DB::transaction(function () use ($data, $items, $creatingProject, $request, $totalClaimAmount): Claim {
             // Proyek baru disimpan sebagai proyek bersama yang dapat dipilih semua vendor.
             $project = $creatingProject
                 ? Project::create([
@@ -107,9 +115,7 @@ class ClaimController extends Controller
                 'vendor_id' => $request->user()->id,
                 'claim_number' => 'CLM-'.now()->format('Ymd').'-'.Str::upper(Str::random(10)),
                 'status' => 'submitted',
-                'total_claim_amount' => collect($items)->sum(
-                    fn (array $item): float => (float) $item['claimed_quantity'] * (float) $item['claimed_unit_price']
-                ),
+                'total_claim_amount' => $totalClaimAmount,
             ]);
 
             $claim->items()->createMany($items);
@@ -194,9 +200,15 @@ class ClaimController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_name' => ['required', 'string', 'max:255'],
             'items.*.unit' => ['required', 'string', 'max:50'],
-            'items.*.claimed_quantity' => ['required', 'numeric', 'min:0'],
-            'items.*.claimed_unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.claimed_quantity' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
+            'items.*.claimed_unit_price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999999'],
         ]);
+        $totalClaimAmount = $this->validatedTotalAmount(
+            $data['items'],
+            'claimed_quantity',
+            'claimed_unit_price'
+        );
+
         $items = collect($data['items'])->map(fn (array $item): array => [
             'item_name' => $item['item_name'],
             'unit' => $item['unit'],
@@ -204,15 +216,13 @@ class ClaimController extends Controller
             'claimed_unit_price' => $item['claimed_unit_price'],
         ])->all();
 
-        DB::transaction(function () use ($claim, $items, $request): void {
+        DB::transaction(function () use ($claim, $items, $request, $totalClaimAmount): void {
             $claim->items()->delete();
             $claim->items()->createMany($items);
             $claim->update([
                 'version' => $claim->version + 1,
                 'status' => 'submitted',
-                'total_claim_amount' => collect($items)->sum(
-                    fn (array $item): float => (float) $item['claimed_quantity'] * (float) $item['claimed_unit_price']
-                ),
+                'total_claim_amount' => $totalClaimAmount,
                 'total_actual_amount' => 0,
                 'rejection_reason' => null,
             ]);
@@ -265,8 +275,8 @@ class ClaimController extends Controller
         $data = $request->validate([
             'items' => ['required', 'array', 'min:1'],
             'items.*.id' => ['required', 'integer', 'distinct'],
-            'items.*.actual_quantity' => ['required', 'numeric', 'min:0'],
-            'items.*.actual_unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.actual_quantity' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:99999999.99'],
+            'items.*.actual_unit_price' => ['required', 'numeric', 'decimal:0,2', 'min:0', 'max:9999999999999'],
             'attachments' => ['nullable', 'array'],
             'attachments.*' => ['required', 'image', 'mimes:jpg,jpeg,png', 'max:5120'],
         ]);
@@ -282,19 +292,21 @@ class ClaimController extends Controller
             ]);
         }
 
+        $totalActual = $this->validatedTotalAmount(
+            $data['items'],
+            'actual_quantity',
+            'actual_unit_price'
+        );
         $uploadedPaths = [];
 
         try {
-            DB::transaction(function () use ($claim, $data, $request, &$uploadedPaths): void {
-                $totalActual = 0;
-
+            DB::transaction(function () use ($claim, $data, $request, $totalActual, &$uploadedPaths): void {
                 foreach ($data['items'] as $actual) {
                     $item = $claim->items->firstWhere('id', $actual['id']);
                     $item->update([
                         'actual_quantity' => $actual['actual_quantity'],
                         'actual_unit_price' => $actual['actual_unit_price'],
                     ]);
-                    $totalActual += (float) $actual['actual_quantity'] * (float) $actual['actual_unit_price'];
                 }
 
                 $claim->update([
@@ -338,6 +350,23 @@ class ClaimController extends Controller
         $this->queueClaimNotification($claim, 'reviewed');
 
         return redirect()->route('claims.show', $claim)->with('success', 'Realisasi lapangan berhasil disimpan.');
+    }
+
+    private function validatedTotalAmount(array $items, string $quantityKey, string $unitPriceKey): float
+    {
+        $total = 0.0;
+
+        foreach ($items as $item) {
+            $total += (float) $item[$quantityKey] * (float) $item[$unitPriceKey];
+        }
+
+        if (! is_finite($total) || $total > self::MAX_CLAIM_TOTAL) {
+            throw ValidationException::withMessages([
+                'items' => 'Total klaim/realisasi tidak boleh melebihi Rp 9.999.999.999.999,00.',
+            ]);
+        }
+
+        return $total;
     }
 
     public function approve(Request $request, Claim $claim): RedirectResponse

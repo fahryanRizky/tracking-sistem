@@ -40,11 +40,11 @@
                         </div>
                         <div class="md:col-span-2">
                             <label :for="'revise-quantity-' + index" class="mb-1 block text-xs font-semibold text-gray-600">Kuantitas</label>
-                            <input :id="'revise-quantity-' + index" :name="'items[' + index + '][claimed_quantity]'" x-model="item.claimed_quantity" type="number" min="0" step="0.01" required class="block w-full border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:ring-yellow-500">
+                            <input :id="'revise-quantity-' + index" :name="'items[' + index + '][claimed_quantity]'" x-model="item.claimed_quantity" type="number" min="0" max="99999999.99" step="0.01" required class="block w-full border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:ring-yellow-500">
                         </div>
                         <div class="md:col-span-3">
                             <label :for="'revise-price-' + index" class="mb-1 block text-xs font-semibold text-gray-600">Harga satuan (Rp)</label>
-                            <input :id="'revise-price-' + index" :name="'items[' + index + '][claimed_unit_price]'" x-model="item.claimed_unit_price" type="number" min="0" step="0.01" required class="block w-full border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:ring-yellow-500">
+                            <input :id="'revise-price-' + index" :name="'items[' + index + '][claimed_unit_price]'" x-model="item.claimed_unit_price" type="number" min="0" max="9999999999999" step="0.01" required class="block w-full border-gray-300 px-3 py-2 text-sm focus:border-yellow-500 focus:ring-yellow-500">
                         </div>
                         <div class="flex items-end md:col-span-1">
                             <button type="button" @click="if (items.length > 1) items.splice(index, 1)" :disabled="items.length === 1" class="w-full border border-red-300 px-2 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40">Hapus</button>

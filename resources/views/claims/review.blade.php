@@ -34,11 +34,11 @@
                             <td class="border-b border-gray-200 p-3">Rp {{ number_format((float) $item->claimed_unit_price, 0, ',', '.') }}</td>
                             <td class="border-b border-gray-200 p-3">
                                 <input type="hidden" name="items[{{ $index }}][id]" value="{{ $item->id }}">
-                                <input name="items[{{ $index }}][actual_quantity]" type="number" min="0" step="0.01" value="{{ old("items.$index.actual_quantity") }}" required class="w-32 border-gray-300 px-2 py-1.5 text-sm focus:border-yellow-500 focus:ring-yellow-500">
+                                <input name="items[{{ $index }}][actual_quantity]" type="number" min="0" max="99999999.99" step="0.01" value="{{ old("items.$index.actual_quantity") }}" required class="w-32 border-gray-300 px-2 py-1.5 text-sm focus:border-yellow-500 focus:ring-yellow-500">
                                 @error("items.$index.actual_quantity")<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                             </td>
                             <td class="border-b border-gray-200 p-3">
-                                <input name="items[{{ $index }}][actual_unit_price]" type="number" min="0" step="0.01" value="{{ old("items.$index.actual_unit_price") }}" required class="w-40 border-gray-300 px-2 py-1.5 text-sm focus:border-yellow-500 focus:ring-yellow-500">
+                                <input name="items[{{ $index }}][actual_unit_price]" type="number" min="0" max="9999999999999" step="0.01" value="{{ old("items.$index.actual_unit_price") }}" required class="w-40 border-gray-300 px-2 py-1.5 text-sm focus:border-yellow-500 focus:ring-yellow-500">
                                 @error("items.$index.actual_unit_price")<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                             </td>
                         </tr>

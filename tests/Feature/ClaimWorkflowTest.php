@@ -155,6 +155,64 @@ class ClaimWorkflowTest extends TestCase
             ->assertSee('Kuantitas aktual belum sesuai dokumen pendukung.');
     }
 
+    public function test_claim_submission_rejects_totals_that_exceed_decimal_column_limits(): void
+    {
+        $vendor = $this->makeUser('vendor', 'active');
+        $project = Project::create(['name' => 'Proyek Batas Total']);
+
+        $this->actingAs($vendor)->post(route('claims.store'), [
+            'create_project' => '0',
+            'project_id' => $project->id,
+            'items' => [
+                ['item_name' => 'Item besar', 'unit' => 'unit', 'claimed_quantity' => 2, 'claimed_unit_price' => 6000000000000],
+            ],
+        ])->assertSessionHasErrors('items');
+
+        $this->assertDatabaseCount('claims', 0);
+    }
+
+    public function test_admin_review_rejects_values_that_exceed_decimal_column_limits(): void
+    {
+        $admin = $this->makeUser('admin', 'active');
+        $vendor = $this->makeUser('vendor', 'active');
+        $claim = $this->makeClaim(
+            $vendor,
+            Project::create(['name' => 'Proyek Batas Realisasi']),
+            'submitted',
+            'CLM-BATAS-REALISASI'
+        );
+        $secondItem = $claim->items()->create([
+            'item_name' => 'Material tambahan',
+            'unit' => 'unit',
+            'claimed_quantity' => 1,
+            'claimed_unit_price' => 1,
+        ]);
+
+        $this->actingAs($admin)->put(route('claims.review.update', $claim), [
+            'items' => [
+                ['id' => (string) $claim->items[0]->id, 'actual_quantity' => 75000000000000, 'actual_unit_price' => 1],
+                ['id' => (string) $secondItem->id, 'actual_quantity' => 1, 'actual_unit_price' => 1],
+            ],
+        ])->assertSessionHasErrors('items.0.actual_quantity');
+
+        $this->put(route('claims.review.update', $claim), [
+            'items' => [
+                ['id' => (string) $claim->items[0]->id, 'actual_quantity' => 1, 'actual_unit_price' => 10000000000000],
+                ['id' => (string) $secondItem->id, 'actual_quantity' => 1, 'actual_unit_price' => 1],
+            ],
+        ])->assertSessionHasErrors('items.0.actual_unit_price');
+
+        $this->put(route('claims.review.update', $claim), [
+            'items' => [
+                ['id' => (string) $claim->items[0]->id, 'actual_quantity' => 1, 'actual_unit_price' => 6000000000000],
+                ['id' => (string) $secondItem->id, 'actual_quantity' => 1, 'actual_unit_price' => 6000000000000],
+            ],
+        ])->assertSessionHasErrors('items');
+
+        $this->assertSame('submitted', $claim->fresh()->status);
+        $this->assertNull($claim->items()->firstOrFail()->actual_quantity);
+    }
+
     public function test_claim_status_notifications_are_queued_to_the_requested_recipients(): void
     {
         Mail::fake();
