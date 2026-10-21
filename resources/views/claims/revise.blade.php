@@ -14,7 +14,7 @@
     </div>
 
     <form method="POST" action="{{ route('claims.revise.store', $claim) }}"
-          x-data="{ items: @js($claim->items->map(fn ($item) => ['item_name' => $item->item_name, 'unit' => $item->unit, 'claimed_quantity' => (float) $item->claimed_quantity, 'claimed_unit_price' => (float) $item->claimed_unit_price])->values()->all()) }"
+          x-data="{ items: @js(old('items', $claim->items->map(fn ($item) => ['item_name' => $item->item_name, 'unit' => $item->unit, 'claimed_quantity' => (float) $item->claimed_quantity, 'claimed_unit_price' => (float) $item->claimed_unit_price])->values()->all())) }"
           class="space-y-6">
         @csrf
         @method('PUT')
@@ -27,6 +27,7 @@
                 <button type="button" @click="items.push({ item_name: '', unit: '', claimed_quantity: 1, claimed_unit_price: 0 })" class="border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50">Tambah item</button>
             </div>
             <div class="space-y-4 p-5">
+                @error('items')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
                 <template x-for="(item, index) in items" :key="index">
                     <div class="grid gap-3 border border-gray-200 p-4 md:grid-cols-12">
                         <div class="md:col-span-4">

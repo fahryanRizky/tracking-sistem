@@ -6,10 +6,6 @@
     <h1 class="text-xl font-bold text-gray-900">Masuk ke akun</h1>
     <p class="mt-1 text-sm text-gray-500">Gunakan username dan kata sandi yang terdaftar.</p>
 
-    @if (session('status'))
-        <div role="status" class="mt-4 border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">{{ session('status') }}</div>
-    @endif
-
     <form method="POST" action="{{ route('login.store') }}" class="mt-6 space-y-5">
         @csrf
         <div>

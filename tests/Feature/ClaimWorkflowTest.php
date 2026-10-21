@@ -13,6 +13,7 @@ use App\Models\ClaimComment;
 use App\Models\ClaimRevision;
 use App\Models\Project;
 use App\Models\User;
+use App\Notifications\ClaimSubmittedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Barryvdh\DomPDF\PDF as DomPdfDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -192,6 +193,91 @@ class ClaimWorkflowTest extends TestCase
         $this->patch(route('claims.reject', $secondClaim), ['rejection_reason' => 'Perlu dokumen pendukung.'])->assertRedirect();
         Mail::assertQueued(ClaimRejectedMail::class, fn (ClaimRejectedMail $mail): bool => $mail->hasTo('vendor@tracking.test')
             && $mail->hasCc('admin@tracking.test'));
+    }
+
+    public function test_claim_validation_and_vendor_revision_only_allow_rejected_claims(): void
+    {
+        $vendor = $this->makeUser('vendor', 'active');
+        $project = Project::create(['name' => 'Proyek Validasi']);
+
+        $this->actingAs($vendor)->post(route('claims.store'), [
+            'create_project' => '0',
+            'project_id' => $project->id,
+            'items' => [],
+        ])->assertSessionHasErrors('items');
+
+        $this->assertDatabaseCount('claims', 0);
+
+        $reviewedClaim = $this->makeClaim($vendor, $project, 'reviewed', 'CLM-LOCKED');
+        $this->get(route('claims.revise', $reviewedClaim))->assertNotFound();
+        $this->put(route('claims.revise.store', $reviewedClaim), [
+            'items' => [
+                ['item_name' => 'Tidak boleh diubah', 'unit' => 'unit', 'claimed_quantity' => 1, 'claimed_unit_price' => 1],
+            ],
+        ])->assertNotFound();
+
+        $this->assertSame('reviewed', $reviewedClaim->fresh()->status);
+        $this->assertSame('Material uji', $reviewedClaim->items()->firstOrFail()->item_name);
+    }
+
+    public function test_claim_status_changes_create_private_in_app_notifications_and_mark_them_read(): void
+    {
+        Mail::fake();
+
+        $vendor = $this->makeUser('vendor', 'active');
+        $admin = $this->makeUser('admin', 'active');
+        $owner = $this->makeUser('owner', 'active');
+        $project = Project::create(['name' => 'Proyek Notifikasi Dalam Aplikasi']);
+
+        $this->actingAs($vendor)->post(route('claims.store'), [
+            'create_project' => '0',
+            'project_id' => $project->id,
+            'items' => [
+                ['item_name' => 'Panel', 'unit' => 'unit', 'claimed_quantity' => 2, 'claimed_unit_price' => 50000],
+            ],
+        ])->assertRedirect();
+
+        $claim = Claim::firstOrFail();
+        $submittedNotification = $admin->notifications()->firstOrFail();
+        $this->assertSame(ClaimSubmittedNotification::class, $submittedNotification->type);
+        $this->assertSame('claim_submitted', $submittedNotification->data['type']);
+        $this->assertSame(route('claims.show', $claim, false), $submittedNotification->data['url']);
+        $this->assertSame(0, $owner->notifications()->count());
+        $this->assertSame(0, $vendor->notifications()->count());
+
+        $this->actingAs($vendor)
+            ->post(route('notifications.read', $submittedNotification->id))
+            ->assertNotFound();
+        $this->assertNull($submittedNotification->fresh()->read_at);
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Notifikasi')
+            ->assertSee('1 belum dibaca');
+        $this->post(route('notifications.read', $submittedNotification->id))
+            ->assertRedirect(route('claims.show', $claim));
+        $this->assertNotNull($submittedNotification->fresh()->read_at);
+
+        $this->actingAs($admin)->put(route('claims.review.update', $claim), [
+            'items' => [
+                ['id' => (string) $claim->items[0]->id, 'actual_quantity' => 2, 'actual_unit_price' => 45000],
+            ],
+        ])->assertRedirect();
+        $this->assertSame('claim_reviewed', $owner->notifications()->firstOrFail()->data['type']);
+
+        $this->actingAs($owner)->patch(route('claims.approve', $claim))->assertRedirect();
+        $this->assertSame('claim_approved', $vendor->notifications()->firstOrFail()->data['type']);
+
+        $rejectedClaim = $this->makeClaim($vendor, $project, 'reviewed', 'CLM-REJECTED-IN-APP');
+        $this->actingAs($owner)->patch(route('claims.reject', $rejectedClaim), [
+            'rejection_reason' => 'Dokumen belum lengkap.',
+        ])->assertRedirect();
+        $this->assertSame(
+            'claim_rejected',
+            $vendor->notifications()->where('data->claim_id', $rejectedClaim->id)->firstOrFail()->data['type']
+        );
+        $this->assertSame(2, $vendor->unreadNotifications()->count());
     }
 
     public function test_claim_pdf_can_be_downloaded_by_an_authorized_vendor(): void

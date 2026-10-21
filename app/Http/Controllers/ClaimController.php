@@ -11,6 +11,10 @@ use App\Models\Claim;
 use App\Models\ClaimRevision;
 use App\Models\Project;
 use App\Models\User;
+use App\Notifications\ClaimApprovedNotification;
+use App\Notifications\ClaimRejectedNotification;
+use App\Notifications\ClaimReviewedNotification;
+use App\Notifications\ClaimSubmittedNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -120,9 +124,10 @@ class ClaimController extends Controller
             return $claim;
         });
 
+        $this->notifyClaimRecipients($claim, 'submitted');
         $this->queueClaimNotification($claim, 'submitted');
 
-        return redirect()->route('claims.show', $claim)->with('status', 'Klaim berhasil diajukan.');
+        return redirect()->route('claims.show', $claim)->with('success', 'Klaim berhasil diajukan.');
     }
 
     public function show(Request $request, Claim $claim): View
@@ -220,9 +225,11 @@ class ClaimController extends Controller
             ]);
         });
 
-        $this->queueClaimNotification($claim->fresh(), 'submitted');
+        $claim = $claim->fresh();
+        $this->notifyClaimRecipients($claim, 'submitted');
+        $this->queueClaimNotification($claim, 'submitted');
 
-        return redirect()->route('claims.show', $claim)->with('status', 'Revisi klaim berhasil dikirim.');
+        return redirect()->route('claims.show', $claim)->with('success', 'Revisi klaim berhasil dikirim.');
     }
 
     public function storeComment(Request $request, Claim $claim): RedirectResponse
@@ -239,7 +246,7 @@ class ClaimController extends Controller
             'message' => $data['message'],
         ]);
 
-        return redirect()->route('claims.show', $claim)->with('status', 'Komentar berhasil dikirim.');
+        return redirect()->route('claims.show', $claim)->with('success', 'Komentar berhasil dikirim.');
     }
 
     public function review(Claim $claim): View
@@ -326,9 +333,11 @@ class ClaimController extends Controller
             throw $exception;
         }
 
-        $this->queueClaimNotification($claim->fresh(), 'reviewed');
+        $claim = $claim->fresh();
+        $this->notifyClaimRecipients($claim, 'reviewed');
+        $this->queueClaimNotification($claim, 'reviewed');
 
-        return redirect()->route('claims.show', $claim)->with('status', 'Realisasi lapangan berhasil disimpan.');
+        return redirect()->route('claims.show', $claim)->with('success', 'Realisasi lapangan berhasil disimpan.');
     }
 
     public function approve(Request $request, Claim $claim): RedirectResponse
@@ -345,9 +354,11 @@ class ClaimController extends Controller
             ]);
         });
 
-        $this->queueClaimNotification($claim->fresh(), 'approved');
+        $claim = $claim->fresh();
+        $this->notifyClaimRecipients($claim, 'approved');
+        $this->queueClaimNotification($claim, 'approved');
 
-        return back()->with('status', 'Klaim berhasil disetujui.');
+        return back()->with('success', 'Klaim berhasil disetujui.');
     }
 
     public function reject(Request $request, Claim $claim): RedirectResponse
@@ -399,9 +410,33 @@ class ClaimController extends Controller
             ]);
         });
 
-        $this->queueClaimNotification($claim->fresh(), 'rejected');
+        $claim = $claim->fresh();
+        $this->notifyClaimRecipients($claim, 'rejected');
+        $this->queueClaimNotification($claim, 'rejected');
 
-        return back()->with('status', 'Klaim berhasil ditolak.');
+        return back()->with('success', 'Klaim berhasil ditolak.');
+    }
+
+    private function notifyClaimRecipients(Claim $claim, string $event): void
+    {
+        $claim->loadMissing('vendor');
+        [$recipients, $notification] = match ($event) {
+            'submitted' => [
+                User::where('role', 'admin')->get(),
+                new ClaimSubmittedNotification($claim),
+            ],
+            'reviewed' => [
+                User::where('role', 'owner')->get(),
+                new ClaimReviewedNotification($claim),
+            ],
+            'approved' => [collect([$claim->vendor]), new ClaimApprovedNotification($claim)],
+            'rejected' => [collect([$claim->vendor]), new ClaimRejectedNotification($claim)],
+            default => throw new \InvalidArgumentException('Jenis notifikasi klaim tidak dikenal.'),
+        };
+
+        foreach ($recipients as $recipient) {
+            $recipient->notify($notification);
+        }
     }
 
     /**

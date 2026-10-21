@@ -62,17 +62,53 @@
                     <p class="text-sm font-semibold text-gray-900">{{ auth()->user()->username }}</p>
                     <p class="text-xs capitalize text-gray-500">{{ auth()->user()->role }}</p>
                 </div>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Keluar</button>
-                </form>
+                <div class="flex items-center gap-3">
+                    <div class="relative" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                        <button type="button" @click="open = !open" :aria-expanded="open.toString()" aria-controls="notifications-menu"
+                                aria-label="Notifikasi" class="relative inline-flex h-10 w-10 items-center justify-center border border-gray-300 text-gray-700 hover:bg-gray-50">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 0 0-4.5-5.8V4a1.5 1.5 0 0 0-3 0v1.2A6 6 0 0 0 6 11v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 0 1-6 0m6 0H9"/>
+                            </svg>
+                            @php($unreadNotificationsCount = auth()->user()->unreadNotifications()->count())
+                            @if ($unreadNotificationsCount > 0)
+                                <span class="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1 text-center text-xs font-bold leading-5 text-white">{{ $unreadNotificationsCount > 99 ? '99+' : $unreadNotificationsCount }}</span>
+                            @endif
+                        </button>
+                        <div id="notifications-menu" x-cloak x-show="open" x-transition
+                             class="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2.5rem)] border border-gray-200 bg-white shadow-lg sm:w-96">
+                            <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+                                <h2 class="text-sm font-semibold text-gray-900">Notifikasi</h2>
+                                <span class="text-xs text-gray-500">{{ $unreadNotificationsCount }} belum dibaca</span>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                @forelse (auth()->user()->notifications()->latest()->limit(10)->get() as $notification)
+                                    <form method="POST" action="{{ route('notifications.read', $notification->id) }}">
+                                        @csrf
+                                        <button type="submit" class="block w-full border-b border-gray-100 px-4 py-3 text-left text-sm hover:bg-gray-50 {{ $notification->read_at ? 'bg-white text-gray-700' : 'bg-yellow-500 text-gray-950' }}">
+                                            <span class="block">{{ $notification->data['message'] ?? 'Ada pembaruan klaim.' }}</span>
+                                            <span class="mt-1 block text-xs opacity-75">{{ $notification->created_at->diffForHumans() }}</span>
+                                        </button>
+                                    </form>
+                                @empty
+                                    <p class="px-4 py-6 text-center text-sm text-gray-500">Belum ada notifikasi.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    </div>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Keluar</button>
+                    </form>
+                </div>
             </header>
             <main class="mx-auto max-w-7xl px-5 py-6 sm:px-8 sm:py-8">
-                @if (session('status'))
-                    <div role="status" class="mb-5 border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('status') }}</div>
+                @if (session('success') || session('status'))
+                    <div x-data="{ visible: true }" x-init="setTimeout(() => visible = false, 3000)" x-show="visible" x-transition
+                         role="status" class="mb-5 border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('success') ?? session('status') }}</div>
                 @endif
                 @if ($errors->any())
-                    <div role="alert" class="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    <div x-data="{ visible: true }" x-init="setTimeout(() => visible = false, 3000)" x-show="visible" x-transition
+                         role="alert" class="mb-5 border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
                         <p class="font-semibold">Periksa kembali data yang dimasukkan.</p>
                         <ul class="mt-1 list-inside list-disc">
                             @foreach ($errors->all() as $error)

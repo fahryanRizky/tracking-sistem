@@ -9,7 +9,7 @@
         <p class="mt-1 text-sm text-gray-600">Masukkan rincian tagihan yang akan diverifikasi.</p>
     </div>
 
-        <form method="POST" action="{{ route('claims.store') }}" x-data="{ items: [{ item_name: '', unit: '', claimed_quantity: 1, claimed_unit_price: 0 }], creatingProject: @js((bool) old('create_project', false)) }" class="space-y-6">
+        <form method="POST" action="{{ route('claims.store') }}" x-data="{ items: @js(old('items', [['item_name' => '', 'unit' => '', 'claimed_quantity' => 1, 'claimed_unit_price' => 0]])), creatingProject: @js((bool) old('create_project', false)) }" class="space-y-6">
             @csrf
             <section class="border border-gray-200 bg-white p-5">
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -56,6 +56,7 @@
                     <button type="button" @click="items.push({ item_name: '', unit: '', claimed_quantity: 1, claimed_unit_price: 0 })" class="border border-gray-300 px-3 py-2 text-sm font-medium hover:bg-gray-50">Tambah item</button>
                 </div>
                 <div class="space-y-4 p-5">
+                    @error('items')<p class="text-sm text-red-700">{{ $message }}</p>@enderror
                     <template x-for="(item, index) in items" :key="index">
                         <div class="grid gap-3 border border-gray-200 p-4 md:grid-cols-12">
                             <div class="md:col-span-4">

@@ -12,6 +12,7 @@
     <form method="POST" action="{{ route('claims.review.update', $claim) }}" enctype="multipart/form-data" class="border border-gray-200 bg-white">
         @csrf
         @method('PUT')
+        @error('items')<p class="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{{ $message }}</p>@enderror
         <div class="overflow-x-auto">
             <table class="table-auto w-full border-collapse border border-gray-300 text-left text-sm">
                 <thead class="bg-gray-50 text-gray-700">
@@ -34,9 +35,11 @@
                             <td class="border-b border-gray-200 p-3">
                                 <input type="hidden" name="items[{{ $index }}][id]" value="{{ $item->id }}">
                                 <input name="items[{{ $index }}][actual_quantity]" type="number" min="0" step="0.01" value="{{ old("items.$index.actual_quantity") }}" required class="w-32 border-gray-300 px-2 py-1.5 text-sm focus:border-yellow-500 focus:ring-yellow-500">
+                                @error("items.$index.actual_quantity")<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                             </td>
                             <td class="border-b border-gray-200 p-3">
                                 <input name="items[{{ $index }}][actual_unit_price]" type="number" min="0" step="0.01" value="{{ old("items.$index.actual_unit_price") }}" required class="w-40 border-gray-300 px-2 py-1.5 text-sm focus:border-yellow-500 focus:ring-yellow-500">
+                                @error("items.$index.actual_unit_price")<p class="mt-1 text-xs text-red-700">{{ $message }}</p>@enderror
                             </td>
                         </tr>
                     @endforeach
